@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash Screen Theme for Android 12+ with animation -->
+    <style name="Theme.KDragonBall.Splash" parent="Theme.SplashScreen">
+        <!-- Background color - Dragon Ball Orange -->
+        <item name="windowSplashScreenBackground">@color/dragonball_orange</item>
+
+        <!-- Animated Dragon Ball icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_animated</item>
+
+        <!-- Animation duration (max 1000ms) -->
+        <item name="windowSplashScreenAnimationDuration">1000</item>
+
+        <!-- Post-splash theme -->
+        <item name="postSplashScreenTheme">@style/Theme.KDragonBall</item>
+    </style>
+</resources>

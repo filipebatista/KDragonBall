@@ -1,0 +1,194 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., 1.0.0)"
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+  JAVA_VERSION: "17"
+
+jobs:
+  # Validate and test
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: gradle/actions/wrapper-validation@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Lint and test
+        run: |
+          ./gradlew ktlintCheck --configuration-cache
+          ./gradlew :shared:allTests --configuration-cache
+
+  # Build Android (APK + AAB)
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release artifacts
+        run: |
+          ./gradlew :androidApp:assembleRelease :androidApp:bundleRelease --configuration-cache
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: androidApp/build/outputs/apk/release/*.apk
+          retention-days: 90
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-aab
+          path: androidApp/build/outputs/bundle/release/*.aab
+          retention-days: 90
+
+  # Build iOS IPA
+  build-ios:
+    name: Build iOS
+    runs-on: macos-15
+    needs: validate
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 16.4
+        run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate dummy framework for CocoaPods
+        run: ./gradlew :shared:generateDummyFramework
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            iosApp/Pods
+            ~/Library/Caches/CocoaPods
+          key: pods-${{ hashFiles('iosApp/Podfile.lock') }}
+          restore-keys: pods-
+
+      - name: Generate Xcode project
+        run: |
+          cd iosApp
+          xcodegen generate
+
+      - name: Archive iOS app
+        run: |
+          cd iosApp
+          xcodebuild -workspace iosApp.xcworkspace \
+            -scheme iosApp \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath $PWD/build/iosApp.xcarchive \
+            -destination 'generic/platform=iOS' \
+            archive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SKIP_INSTALL=NO
+
+      - name: Create IPA
+        run: |
+          cd iosApp
+          APP_PATH=$(find build/iosApp.xcarchive -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find .app bundle in archive"
+            exit 1
+          fi
+          mkdir -p build/ipa/Payload
+          cp -R "$APP_PATH" build/ipa/Payload/
+          cd build/ipa
+          zip -r KDragonBall.ipa Payload
+          rm -rf Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-release-ipa
+          path: iosApp/build/ipa/*.ipa
+          retention-days: 90
+
+  # Create GitHub release
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios]
+    if: startsWith(github.ref, 'refs/tags/')
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Android artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: android-release-*
+          path: artifacts/android
+          merge-multiple: true
+
+      - name: Download iOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-release-ipa
+          path: artifacts/ios
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/android/*.apk
+            artifacts/android/*.aab
+            artifacts/ios/*.ipa
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, '-') }}

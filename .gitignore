@@ -1,0 +1,63 @@
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log/OS Files
+*.log
+.DS_Store
+
+# Local AI assistant instructions
+CLAUDE.md
+
+# Android Studio generated files and folders
+captures/
+.externalNativeBuild/
+.cxx/
+*.aab
+*.apk
+output-metadata.json
+
+# IntelliJ
+*.iml
+.idea/
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google Services (e.g. APIs or Firebase)
+google-services.json
+
+# Android Profiling
+*.hprof
+
+#Kotlin metadata
+.kotlin/metadata
+
+# iOS App - XcodeGen generated files
+iosApp/*.xcodeproj
+iosApp/*.xcworkspace
+iosApp/Pods/
+iosApp/Podfile.lock
+
+# Xcode
+iosApp/**/xcuserdata/
+iosApp/**/*.xcscmblueprint
+iosApp/**/*.xccheckout
+iosApp/DerivedData/
+
+# CocoaPods
+iosApp/**/Pods/
+
+# Generated app icon script artifacts
+iosApp/generate_app_icon.py
+
+# Swift Package Manager
+iosApp/.build/
+iosApp/Package.resolved
