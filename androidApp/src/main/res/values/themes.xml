@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme -->
+    <style name="Theme.KDragonBall" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#FF6B35</item>
+        <item name="android:navigationBarColor">#FF6B35</item>
+    </style>
+
+    <!-- Splash Screen Theme with animated icon -->
+    <style name="Theme.KDragonBall.Splash" parent="Theme.SplashScreen">
+        <!-- Background color - Dragon Ball Orange -->
+        <item name="windowSplashScreenBackground">#FF6B35</item>
+
+        <!-- Animated Dragon Ball icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_logo_animated</item>
+
+        <!-- Animation duration -->
+        <item name="windowSplashScreenAnimationDuration">1000</item>
+
+        <!-- Post-splash theme -->
+        <item name="postSplashScreenTheme">@style/Theme.KDragonBall</item>
+    </style>
+</resources>

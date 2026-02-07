@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+
+    <!-- Animation group - pivots at center for rotation -->
+    <group
+        android:name="rotationGroup"
+        android:pivotX="144"
+        android:pivotY="144">
+
+        <!-- Main Dragon Ball sphere -->
+        <path
+            android:fillColor="#FFA500"
+            android:pathData="M144,144m-80,0a80,80 0,1 1,160 0a80,80 0,1 1,-160 0" />
+
+        <!-- Dragon Ball inner glow -->
+        <path
+            android:fillColor="#FFD700"
+            android:pathData="M144,144m-65,0a65,65 0,1 1,130 0a65,65 0,1 1,-130 0" />
+
+        <!-- 4 Stars on the Dragon Ball -->
+        <!-- Star 1 - Top Left -->
+        <path
+            android:fillColor="#DC143C"
+            android:pathData="M112,112 L118,98 L124,112 L138,112 L127,122 L131,136 L118,127 L105,136 L109,122 L98,112 Z" />
+
+        <!-- Star 2 - Top Right -->
+        <path
+            android:fillColor="#DC143C"
+            android:pathData="M164,112 L170,98 L176,112 L190,112 L179,122 L183,136 L170,127 L157,136 L161,122 L150,112 Z" />
+
+        <!-- Star 3 - Bottom Left -->
+        <path
+            android:fillColor="#DC143C"
+            android:pathData="M112,164 L118,150 L124,164 L138,164 L127,174 L131,188 L118,179 L105,188 L109,174 L98,164 Z" />
+
+        <!-- Star 4 - Bottom Right -->
+        <path
+            android:fillColor="#DC143C"
+            android:pathData="M164,164 L170,150 L176,164 L190,164 L179,174 L183,188 L170,179 L157,188 L161,174 L150,164 Z" />
+
+        <!-- Shine effect -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M95,95 Q115,75 150,85"
+            android:strokeWidth="8"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M88,115 Q100,100 115,108"
+            android:strokeWidth="5"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+
+        <!-- Outline -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M144,144m-81,0a81,81 0,1 1,162 0a81,81 0,1 1,-162 0"
+            android:strokeWidth="4"
+            android:strokeColor="#D94E2A" />
+
+    </group>
+
+</vector>

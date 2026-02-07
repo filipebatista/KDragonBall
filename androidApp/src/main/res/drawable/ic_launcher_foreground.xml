@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Dragon Ball sphere -->
+    <path
+        android:pathData="M54,54m-33,0a33,33 0,1 1,66 0a33,33 0,1 1,-66 0"
+        android:fillColor="#FF6B35"/>
+
+    <!-- Inner glow -->
+    <path
+        android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0"
+        android:fillColor="#FFD23F"/>
+
+    <!-- Four stars (4-star dragon ball) -->
+    <!-- Star 1 - top left -->
+    <path
+        android:pathData="M42,42 L44,37 L46,42 L51,42 L47,46 L49,51 L44,48 L39,51 L41,46 L37,42 Z"
+        android:fillColor="#D32F2F"/>
+
+    <!-- Star 2 - top right -->
+    <path
+        android:pathData="M62,42 L64,37 L66,42 L71,42 L67,46 L69,51 L64,48 L59,51 L61,46 L57,42 Z"
+        android:fillColor="#D32F2F"/>
+
+    <!-- Star 3 - bottom left -->
+    <path
+        android:pathData="M42,62 L44,57 L46,62 L51,62 L47,66 L49,71 L44,68 L39,71 L41,66 L37,62 Z"
+        android:fillColor="#D32F2F"/>
+
+    <!-- Star 4 - bottom right -->
+    <path
+        android:pathData="M62,62 L64,57 L66,62 L71,62 L67,66 L69,71 L64,68 L59,71 L61,66 L57,62 Z"
+        android:fillColor="#D32F2F"/>
+
+    <!-- Shine effect -->
+    <path
+        android:pathData="M38,38 Q42,34 48,36"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+</vector>

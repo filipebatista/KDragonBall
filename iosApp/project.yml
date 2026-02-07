@@ -1,0 +1,57 @@
+name: iosApp
+options:
+  bundleIdPrefix: com.example.kdragonball
+  deploymentTarget:
+    iOS: "15.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+  groupSortPosition: top
+  createIntermediateGroups: true
+  postGenCommand: pod install
+
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+        excludes:
+          - "Preview Content/**"
+      - path: iosApp/Preview Content
+        type: group
+        buildPhase: none
+    settings:
+      base:
+        INFOPLIST_FILE: iosApp/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kdragonball.ios
+        PRODUCT_NAME: KDragonBall
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        ENABLE_PREVIEWS: YES
+        DEVELOPMENT_ASSET_PATHS: "\"iosApp/Preview Content\""
+        GENERATE_INFOPLIST_FILE: NO
+
+  iosAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: iosAppUITests
+    settings:
+      base:
+        INFOPLIST_FILE: iosAppUITests/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.kdragonball.ios.uitests
+        SWIFT_VERSION: "5.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+        TEST_TARGET_NAME: iosApp
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: iosApp

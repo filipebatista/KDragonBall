@@ -1,0 +1,275 @@
+name: CI
+
+on:
+    push:
+        branches: [ main, develop ]
+    pull_request:
+        branches: [ main, develop ]
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+    checks: write
+
+env:
+    GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+    JAVA_VERSION: "17"
+
+jobs:
+    # Security: Validate Gradle wrapper
+    validate-wrapper:
+        name: Validate Gradle Wrapper
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: gradle/actions/wrapper-validation@v4
+
+    # Phase 1: Linting (parallel matrix)
+    lint:
+        name: Lint (${{ matrix.type }})
+        runs-on: ubuntu-latest
+        needs: validate-wrapper
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    -   type: kotlin
+                        command: ./gradlew ktlintCheck --configuration-cache
+                    -   type: swift
+                        command: cd iosApp && swiftlint lint --strict --reporter github-actions-logging
+
+        steps:
+            -   uses: actions/checkout@v4
+
+            -   name: Set up JDK
+                if: matrix.type == 'kotlin'
+                uses: actions/setup-java@v4
+                with:
+                    java-version: ${{ env.JAVA_VERSION }}
+                    distribution: temurin
+
+            -   name: Setup Gradle
+                if: matrix.type == 'kotlin'
+                uses: gradle/actions/setup-gradle@v4
+                with:
+                    cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+            -   name: Cache SwiftLint
+                if: matrix.type == 'swift'
+                uses: actions/cache@v4
+                with:
+                    path: /usr/local/bin/swiftlint
+                    key: swiftlint-0.57.0
+
+            -   name: Install SwiftLint
+                if: matrix.type == 'swift'
+                run: |
+                    if [ ! -f /usr/local/bin/swiftlint ]; then
+                      curl -L https://github.com/realm/SwiftLint/releases/download/0.57.0/swiftlint_linux.zip -o swiftlint.zip
+                      unzip -o swiftlint.zip
+                      chmod +x swiftlint
+                      sudo mv swiftlint /usr/local/bin/
+                    fi
+
+            -   name: Run lint
+                run: ${{ matrix.command }}
+
+    # Phase 2: Testing
+    test:
+        name: Unit Tests
+        runs-on: ubuntu-latest
+        needs: lint
+
+        steps:
+            -   uses: actions/checkout@v4
+
+            -   name: Set up JDK
+                uses: actions/setup-java@v4
+                with:
+                    java-version: ${{ env.JAVA_VERSION }}
+                    distribution: temurin
+
+            -   name: Setup Gradle
+                uses: gradle/actions/setup-gradle@v4
+                with:
+                    cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+            -   name: Run tests
+                run: ./gradlew :shared:allTests --configuration-cache
+
+            -   name: Publish test report
+                uses: mikepenz/action-junit-report@v4
+                if: always()
+                with:
+                    report_paths: "**/build/test-results/**/TEST-*.xml"
+                    check_name: Test Results
+
+    # Phase 3: Builds (parallel)
+    android-build:
+        name: Build Android
+        runs-on: ubuntu-latest
+        needs: test
+
+        steps:
+            -   uses: actions/checkout@v4
+
+            -   name: Set up JDK
+                uses: actions/setup-java@v4
+                with:
+                    java-version: ${{ env.JAVA_VERSION }}
+                    distribution: temurin
+
+            -   name: Setup Gradle
+                uses: gradle/actions/setup-gradle@v4
+                with:
+                    cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+            -   name: Build Android Debug APK
+                run: ./gradlew :androidApp:assembleDebug --configuration-cache
+
+            -   name: Upload APK
+                uses: actions/upload-artifact@v4
+                with:
+                    name: android-debug-apk
+                    path: androidApp/build/outputs/apk/debug/*.apk
+                    retention-days: 14
+
+    # iOS IPA build (main branch only)
+    ios-app:
+        name: Build iOS IPA
+        runs-on: macos-15
+        needs: test
+        if: github.ref == 'refs/heads/main'
+
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Select Xcode 16.4
+              run: sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+
+            - name: Set up JDK
+              uses: actions/setup-java@v4
+              with:
+                  java-version: ${{ env.JAVA_VERSION }}
+                  distribution: temurin
+
+            - name: Setup Gradle
+              uses: gradle/actions/setup-gradle@v4
+
+            - name: Install XcodeGen
+              run: brew install xcodegen
+
+            - name: Generate dummy framework for CocoaPods
+              run: ./gradlew :shared:generateDummyFramework
+
+            - name: Cache CocoaPods
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      iosApp/Pods
+                      ~/Library/Caches/CocoaPods
+                  key: pods-${{ hashFiles('iosApp/Podfile.lock') }}
+                  restore-keys: pods-
+
+            - name: Generate Xcode project
+              run: |
+                  cd iosApp
+                  xcodegen generate
+
+            - name: Archive iOS app
+              run: |
+                  cd iosApp
+                  xcodebuild -workspace iosApp.xcworkspace \
+                    -scheme iosApp \
+                    -sdk iphoneos \
+                    -configuration Release \
+                    -archivePath $PWD/build/iosApp.xcarchive \
+                    -destination 'generic/platform=iOS' \
+                    archive \
+                    CODE_SIGN_IDENTITY="-" \
+                    CODE_SIGNING_REQUIRED=NO \
+                    CODE_SIGNING_ALLOWED=NO \
+                    SKIP_INSTALL=NO
+
+                  # Verify archive was created
+                  if [ ! -d "$PWD/build/iosApp.xcarchive" ]; then
+                    echo "Error: Archive was not created"
+                    exit 1
+                  fi
+                  echo "Archive created successfully"
+                  ls -la $PWD/build/iosApp.xcarchive/
+
+            - name: Create ExportOptions.plist
+              run: |
+                  mkdir -p iosApp/build
+                  cat > iosApp/build/ExportOptions.plist << 'EOF'
+                  <?xml version="1.0" encoding="UTF-8"?>
+                  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+                  <plist version="1.0">
+                  <dict>
+                      <key>method</key>
+                      <string>development</string>
+                      <key>compileBitcode</key>
+                      <false/>
+                      <key>thinning</key>
+                      <string>&lt;none&gt;</string>
+                  </dict>
+                  </plist>
+                  EOF
+
+            - name: Export IPA
+              run: |
+                  cd iosApp
+                  mkdir -p build/ipa
+
+                  # Debug: Show archive structure
+                  echo "Archive structure:"
+                  find build/iosApp.xcarchive -type d | head -20
+
+                  # Find the .app bundle in the archive
+                  APP_PATH=$(find build/iosApp.xcarchive -name "*.app" -type d | head -1)
+
+                  if [ -z "$APP_PATH" ]; then
+                    echo "Error: Could not find .app bundle in archive"
+                    exit 1
+                  fi
+
+                  echo "Found app at: $APP_PATH"
+
+                  # Create IPA manually from archive since we don't have signing
+                  mkdir -p build/ipa/Payload
+                  cp -R "$APP_PATH" build/ipa/Payload/
+                  cd build/ipa
+                  zip -r KDragonBall.ipa Payload
+                  rm -rf Payload
+
+            - name: Upload IPA
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ios-ipa
+                  path: iosApp/build/ipa/*.ipa
+                  retention-days: 14
+                  if-no-files-found: warn
+
+        # Summary
+    summary:
+        name: CI Summary
+        runs-on: ubuntu-latest
+        needs: [ lint, test, android-build, ios-app ]
+        if: always()
+
+        steps:
+            -   name: Generate summary
+                run: |
+                    echo "## CI Summary" >> $GITHUB_STEP_SUMMARY
+                    echo "" >> $GITHUB_STEP_SUMMARY
+                    echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+                    echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+                    echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
+                    echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+                    echo "| Android | ${{ needs.android-build.result }} |" >> $GITHUB_STEP_SUMMARY
+                    echo "| iOS IPA | ${{ needs.ios-app.result }} |" >> $GITHUB_STEP_SUMMARY
